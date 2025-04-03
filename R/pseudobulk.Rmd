@@ -1,0 +1,77 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+# Pseudobulk PCA
+```{r}
+library(ggplot2)
+library(dplyr)
+library(readr)
+
+# Load data 
+pc_df <- read_csv("../output/pseudobulk_pca_coordinates.csv") %>%
+  rename(sample = 1)
+meta_df <- read_csv("../output/pseudobulk_metadata.csv") %>%
+  rename(sample = 1)
+
+# Combine metadata and PCA
+plot_df <- pc_df %>%
+  left_join(meta_df, by = "sample") %>%
+  mutate(dataset = case_when(
+    dataset == 'bm_ilc'  ~ "bMV+ILC",
+    dataset == 'bm_only'  ~ "bMV-Only",
+    dataset == 'fm_ilc_pos'  ~ "fMV+ILC",
+    dataset == 'fm_only_pos'  ~ "fMV-Only",
+    dataset == 'bm_fresh' ~ 'bMV-Fresh'
+  ))
+
+
+
+# Define custom shapes for vascular subtypes
+shape_map <- c(
+  "Arteriole" = 15,     # square
+  "Capillary 1" = 16,   # circle
+  "Capillary 2" = 17,   # triangle up
+  "Capillary 3" = 18,   # diamond
+  "Venule" = 4          # X
+)
+
+# Define custom colors for datasets
+color_map <- c(
+  "bMV-Fresh" = "#AF46B4",  # blue
+  "bMV-Only" = "darkgreen",  # orange
+  "bMV+ILC" = "#931C12",  # green
+  "fMV-Only" = "#003C67",  # red
+  "fMV+ILC" = "#EE8733"   # purple
+)
+
+# Plot
+plot <- ggplot(plot_df, aes(x = PC1, y = PC2, color = dataset, shape = vascular_subtype)) +
+  geom_point(size = 4, stroke = 1) +
+  scale_shape_manual(values = shape_map) +
+  scale_color_manual(values = color_map) +
+  theme_minimal(base_family = "Arial") +
+  theme(
+    plot.title = element_blank(),
+    axis.title = element_text(size = 12, face = "bold", family = "Arial"),
+    axis.text = element_text(size = 12, face = "bold", family = "Arial"),
+    legend.title = element_text(size = 12, face = "bold", family = "Arial"),
+    legend.text = element_text(size = 12, face = "bold", family = "Arial"),
+    panel.grid = element_blank(),
+    axis.line = element_line(color = "black", size = 0.8),
+    axis.ticks = element_line(color = "black", size = 0.6)
+  ) +
+  labs(x = "PC1", y = "PC2", color = "Dataset", shape = "Vascular Subtype")
+
+
+ggsave(plot, filename = '../output/pseudobulk.svg', width = 4, height = 4)
+```
+
+Add a new chunk by clicking the *Insert Chunk* button on the toolbar or by pressing *Cmd+Option+I*.
+
+When you save the notebook, an HTML file containing the code and output will be saved alongside it (click the *Preview* button or press *Cmd+Shift+K* to preview the HTML file). 
+
+The preview shows you a rendered HTML copy of the contents of the editor. Consequently, unlike *Knit*, *Preview* does not run any R code chunks. Instead, the output of the chunk when it was last run in the editor is displayed.
+
