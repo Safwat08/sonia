@@ -1,4 +1,4 @@
-SONIA (Single Organotypic ndothelial Nuclei Integrated Analysis) 
+SONIA (Single nuclei Organotypic eNdothelial Integrated Analysis) 
 
 This repository contains the analysis code for the following publication - TBD 
 
