@@ -130,7 +130,7 @@ def preprocess_adata(path_or_adata: str,
     | is_outlier(adata, "pct_counts_in_top_20_genes", 5)
     )
     
-    # Filter pct_counts_mt at 3 MADs and and > 8
+    # Filter pct_counts_mt at 5 MADs and and > 8
     adata.obs["mt_outlier"] = is_outlier(adata, "pct_counts_mt", 5) | (
     adata.obs["pct_counts_mt"] > 8)
 

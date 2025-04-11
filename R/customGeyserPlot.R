@@ -18,7 +18,7 @@ customGeyserPlot <- function(object,
 
   if (plot_feature) {
 
-      # Fetch expression data for the given features
+    # Fetch expression data for the given features
     data_to_plot <- FetchData(object, vars = c(features, metadata))
 
     # Melt the data into long format (for ggplot)

@@ -1,6 +1,8 @@
 SONIA (Single nuclei Organotypic eNdothelial Integrated Analysis) 
 
-This repository contains the analysis code for the following publication - TBD 
+This repository contains the analysis code for the following publication - TBD
+
+Method to recreate analysis:
 
 analysis_workflow.ipynb was used to analyze cellranger outputs using Scanpy
 
