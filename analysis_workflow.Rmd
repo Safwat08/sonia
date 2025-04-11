@@ -16,6 +16,9 @@ library(cowplot)
 library(patchwork)
 library(ggvenn)
 library(ggrepel)
+library(Matrix)
+library(CellChat)
+library(scales)
 ```
 
 # Source necessary functions
@@ -39,10 +42,9 @@ source('R/ec_subtypeScore.R')
 # Fat microvessel data with or without ILCs merged 
 fMV <- readRDS('output/fm_merge_analyzed_subset_analyzed/seurat_obj.rds')
 bMV <- readRDS('output/bm_merge_analyzed_subset_analyzed/seurat_obj.rds')
-merge <- readRDS('output/fm_bm_merge_analyzed/seurat_obj.rds')
-fresh_bMV <- readRDS('output/bm_fresh_postqc_analyzed_subset_analyzed/seurat_obj.rds')
-neg_fMV <- readRDS('output/fm_ilc_neg_postqc_analyzed/seurat_obj.rds')
-all_merge <- readRDS('output/fm_bm_fresh_merge_analyzed/seurat_obj.rds')
+neg_fMV <- readRDS('output/fm_ilc_neg_postqc_analyzed_subset_analyzed/seurat_obj.rds')
+ratMV_ec <- readRDS('output/microvessel_decontx_apr2024_annotated_cleaned_endothelial_cluster.rds')
+ratMV_full <- readRDS('output/microvessel_decontx_apr2024_annotated_cleaned_metadata_updated.rds')
 ```
 
 # Set default parameters
@@ -50,17 +52,11 @@ all_merge <- readRDS('output/fm_bm_fresh_merge_analyzed/seurat_obj.rds')
 # Change Default Assay to MAGIC
 DefaultAssay(fMV) <- 'MAGIC_imputed_data'
 DefaultAssay(bMV) <- 'MAGIC_imputed_data'
-DefaultAssay(merge) <- 'MAGIC_imputed_data'
-DefaultAssay(fresh_bMV) <- 'MAGIC_imputed_data'
-DefaultAssay(all_merge) <- "log1p"
 DefaultAssay(neg_fMV) <- 'MAGIC_imputed_data'
 
 # Change identity to vascular_subtype
 fMV <- SetIdent(fMV, value = 'vascular_subtype')
 bMV <- SetIdent(bMV, value = 'vascular_subtype')
-merge <- SetIdent(merge, value = 'vascular_subtype')
-fresh_bMV <- SetIdent(fresh_bMV, value = 'vascular_subtype')
-all_merge <- SetIdent(all_merge, value = 'vascular_subtype')
 
 # Update annotations if necessary
 fMV@meta.data <- fMV@meta.data %>%
@@ -160,7 +156,7 @@ all_merge@meta.data <- all_merge@meta.data %>%
     batch == 'output_bm_merge_analyzed_subset_analyzed'  ~ "bMV",
     batch == 'output_bm_fresh_postqc_analyzed_subset_analyzed_' ~ "bMV-Fresh"
   ))
-# Update annotations if necessary
+
 # Update annotations if necessary
 all_merge@meta.data <- all_merge@meta.data %>%
   mutate(vascular_subtype = case_when(
@@ -185,6 +181,34 @@ all_merge@meta.data <- all_merge@meta.data %>%
   ))
 
 
+# Update annotations if necessary
+neg_fMV@meta.data <- neg_fMV@meta.data %>%
+  mutate(cell_type = case_when(
+    leiden_res0_25 == '2'  ~ "Beta",
+    leiden_res0_25 == '4'  ~ "Beta",
+    leiden_res0_25 == '3'  ~ "Delta",
+    leiden_res0_25 == '0'  ~ "Alpha",
+    leiden_res0_25 == '1'  ~ "Alpha",
+    leiden_res0_25 == '5'  ~ "Alpha",
+  ))
+
+
+# Update annotations if necessary
+ratMV_ec@meta.data <- ratMV_ec@meta.data %>%
+  mutate(condition = case_when(
+    condition == 'fresh' ~ "Fresh fMV",
+    condition == 'graft' ~ "fMV+PP"
+  ))
+
+# Update annotations if necessary
+ratMV_ec@meta.data <- ratMV_ec@meta.data %>%
+  mutate(cell_type = case_when(
+    cluster.minor.int == 'Artery'  ~ "Arteriole",
+    cluster.minor.int == 'Arteriole'  ~ "Arteriole",
+    cluster.minor.int == 'Capillary'  ~ "Capillary",
+    cluster.minor.int == 'Venule'  ~ "Venule",
+  ))
+
 # Color Pallete
 color_pallete <- c("Arteriole" = '#B09C85', 
                    "Capillary 3" = '#EFC000',
@@ -196,12 +220,23 @@ color_pallete <- c("Arteriole" = '#B09C85',
                    "bMV+ILC" = "#931C12",
                    "bMV-Only" = "darkgreen",
                    'bMV-Fresh' = "#AF46B4",
-                   "Acinar-Alpha-Ductal" = "#4682B4",
-                   "Acinar-Ductal" = "#8E46B4",
-                   "Alpha" = "#AEB446",
+                   "Alpha" = "#4682B4",
                    "Beta" = '#B44656',
                    "Delta" = '#46B462'
                    )
+
+color_pallete2 <- c("Venule" = "#4682B4",
+                    "Capillary" = "#AF46B4",
+                    "Arteriole" = "#B47846",
+                    "Artery" = "#4BB446",
+                    "Fresh fMV" = "#B47846",
+                    "fMV + PP" = '#4682B4',
+                    "Fibroblasts" = "#EFC000",
+                    "Lymphatic Endothelial Cells" = "#FDAF91",
+                    "Lymphoid Cells" = "#4BB446",
+                    "Myeloid Cells" = "#AF46B4",
+                    "Perivascular Cells" = "#B44656",
+                    "Vascular Endothelial Cells" = "#4682B4")
 ```
 
 # Arterio-venous markers
@@ -242,18 +277,19 @@ ggsave(fPlot3,
 dPlot1 <- DimPlot(fMV, 
                   group.by = 'dataset',
                   reduction = 'X_force',
-                  pt.size = 1,
+                  pt.size = 0.3,
                   cols = color_pallete
 ) +
   labs(title = 'Merged', x = "DIM 1", y = "DIM 2") +
   theme(
-    legend.text = element_blank(),
+    legend.text = element_text(face = "plain", size = 6, family = "Arial"),
     axis.text = element_blank(),
-    axis.title = element_text(face = "bold", size = 12, family = "Arial"),
+    axis.title = element_text(face = "plain", size = 6, family = "Arial"),
     axis.ticks = element_blank(),
     axis.line = element_line(),
     legend.title = element_blank(),
-    legend.position = 'right'
+    legend.position = 'right',
+    plot.title = element_text(size = 6, face = "plain", family = "Arial")
   )
 
 # Split by dataset
@@ -261,27 +297,27 @@ dPlot2 <- DimPlot(fMV,
                   group.by = 'dataset',
                   split.by = 'dataset',
                   reduction = 'X_force',
-                  pt.size = 1,
+                  pt.size = 0.5,
                   cols = color_pallete
 ) +
   labs(title = NULL, x = "DIM 1", y = "DIM 2") +
   theme(
-    plot.title = element_blank(),
-    legend.text = element_text(face = "bold", size = 12, family = 'Arial'),
+    legend.text = element_text(face = "plain", size = 6, family = 'Arial'),
     axis.text = element_blank(),
-    axis.title = element_text(face = "bold", size = 12, family = "Arial"),
+    axis.title = element_text(face = "plain", size = 6, family = "Arial"),
     axis.ticks = element_blank(),
     axis.line = element_line(),
     legend.title = element_blank(),
-    legend.position = 'none'
+    legend.position = 'none',
+    plot.title = element_text(size = 6, face = "plain", family = "Arial")
   )
 
-combinedPlot <- plot_grid(dPlot2, dPlot1, ncol = 2, rel_widths = c(2, 1)) 
+combinedPlot <- plot_grid(dPlot2, dPlot1, ncol = 2, rel_widths = c(2.5, 2)) 
 
 ggsave(combinedPlot,
        filename = "figures/dimplot_groupby_sample_fMV.png", 
-       width = 10, 
-       height = 4)
+       width = 6, 
+       height = 3)
 
 
 # Split by dataset
@@ -476,8 +512,6 @@ ggsave(dPlot1,
 
 ```
 
-
-
 # DimPlots for merge
 ```{r}
 # Split by dataset
@@ -573,6 +607,83 @@ ggsave(combinedPlot,
 ```
 
 
+# DimPlots for ILC/neg fMV
+```{r}
+# Split by dataset
+dPlot3 <- DimPlot(neg_fMV, 
+                  group.by = 'cell_type',
+                  reduction = 'X_force',
+                  pt.size = 1,
+                  cols = color_pallete
+) +
+  labs(title = 'ILCs', x = "DIM 1", y = "DIM 2") +
+  theme(
+    legend.text = element_text(face = "bold", size = 12, family = 'Arial'),
+    axis.text = element_blank(),
+    axis.title = element_text(face = "bold", size = 12, family = "Arial"),
+    axis.ticks = element_blank(),
+    axis.line = element_line(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+ggsave(dPlot3,
+       filename = "figures/dimplot_ilc_neg_fMV.png", 
+       width = 4, 
+       height = 4)
+```
+
+# DimPlots for fresh rat MV
+```{r}
+# Split by dataset
+dPlot3 <- DimPlot(ratMV_ec, 
+                  group.by = 'cell_type',
+                  reduction = 'umap',
+                  pt.size = 1,
+                  cols = color_pallete2
+) +
+  labs(title = 'Fresh Rat MVs', x = "DIM 1", y = "DIM 2") +
+  theme(
+    legend.text = element_text(face = "bold", size = 12, family = 'Arial'),
+    axis.text = element_blank(),
+    axis.title = element_text(face = "bold", size = 12, family = "Arial"),
+    axis.ticks = element_blank(),
+    axis.line = element_line(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+ggsave(dPlot3,
+       filename = "figures/dimplot_rat_fresh_MV_EC.png", 
+       width = 4, 
+       height = 4)
+
+
+dPlot4 <- DimPlot(ratMV_full, 
+                  group.by = 'cluster.major.int',
+                  reduction = 'umap',
+                  pt.size = 1,
+                  cols = color_pallete2
+) +
+  labs(title = 'Fresh Rat MVs', x = "DIM 1", y = "DIM 2") +
+  theme(
+    legend.text = element_text(face = "bold", size = 12, family = 'Arial'),
+    axis.text = element_blank(),
+    axis.title = element_text(face = "bold", size = 12, family = "Arial"),
+    axis.ticks = element_blank(),
+    axis.line = element_line(),
+    legend.title = element_blank(),
+    legend.position = 'right'
+  )
+
+ggsave(dPlot4,
+       filename = "figures/dimplot_rat_fresh_MV_full.png", 
+       width = 8, 
+       height = 6)
+
+```
+
+
 # fMV: Stacked bar plot of vascular subtype ratios across datasets
 ```{r}
 # Get metadata from object and convert to data frame and order by frequency
@@ -588,32 +699,41 @@ bPlot <- ggplot(data[],
                 aes(fill=Cluster, 
                     y=Freq, 
                     x=Dataset)) + 
-  ylab("Cell Ratios") +
+  ylab("% Fraction of Total") +
   geom_bar(position="fill", 
            stat="identity", 
            color = "black", 
            show.legend = T) + 
   scale_fill_manual(values = color_pallete) +
+  scale_y_continuous(labels = label_percent()) +  # Converts proportions to percentages
   theme_classic() +
   theme(axis.text.x = element_text(angle = 90, 
-                                   size=12, 
-                                   face="bold", 
+                                   size=6, 
+                                   face="plain", 
                                    family = 'Arial', 
                                    color = "black"),
-        axis.text.y = element_text(size=12, 
-                                   face="bold", 
+        axis.text.y = element_text(size=6, 
+                                   face="plain", 
                                    family = 'Arial', 
                                    color = "black"),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size=12, 
-                                   face="bold", 
+        axis.title.y = element_text(size=6, 
+                                   face="plain", 
+                                   family = 'Arial', 
+                                   color = "black"),
+                legend.title = element_text(size = 6, 
+                                    face = "plain", 
+                                    family = 'Arial', 
+                                    color = "black"),
+        legend.text = element_text(size = 6, 
+                                   face = "plain", 
                                    family = 'Arial', 
                                    color = "black"))
 
 ggsave(bPlot,
-       filename = "figures/barplot_object_fMV.png", 
-       width = 3, 
-       height = 4)
+       filename = "figures/barplot_object_fMV.svg", 
+       width = 2.5, 
+       height = 3)
 ```
 
 # bMV: Stacked bar plot of vascular subtype ratios across datasets
@@ -626,37 +746,40 @@ data <- as.data.frame(table(bMV@meta.data[['vascular_subtype']], bMV@meta.data[[
 # Change colnames
 colnames(data) <- c("Cluster", "Dataset", "Freq")
 
+data$Dataset <- factor(data$Dataset, levels = c("bMV-Only", "bMV+ILC"))
+
 
 bPlot <- ggplot(data[], 
                 aes(fill=Cluster, 
                     y=Freq, 
                     x=Dataset)) + 
-  ylab("Cell Ratios") +
+  ylab("% of Total Nuclei") +
   geom_bar(position="fill", 
            stat="identity", 
            color = "black", 
            show.legend = T) + 
   scale_fill_manual(values = color_pallete) +
+  scale_y_continuous(labels = label_percent()) +  # Converts proportions to percentages
   theme_classic() +
   theme(axis.text.x = element_text(angle = 90, 
-                                   size=12, 
-                                   face="bold", 
+                                   size=6, 
+                                   face="plain", 
                                    family = 'Arial', 
                                    color = "black"),
-        axis.text.y = element_text(size=12, 
-                                   face="bold", 
+        axis.text.y = element_text(size=6, 
+                                   face="plain", 
                                    family = 'Arial', 
                                    color = "black"),
         axis.title.x = element_blank(),
-        axis.title.y = element_text(size=12, 
-                                   face="bold", 
+        axis.title.y = element_text(size=6, 
+                                   face="plain", 
                                    family = 'Arial', 
                                    color = "black"))
 
 ggsave(bPlot,
        filename = "figures/barplot_object_bMV.svg", 
-       width = 3, 
-       height = 4)
+       width = 2.5, 
+       height = 3)
 ```
 
 
@@ -786,9 +909,102 @@ bPlot <- ggplot(data[],
 
 ggsave(bPlot,
        filename = "figures/barplot_object_neg_ilc.svg", 
-       width = 3, 
+       width = 2.5, 
        height = 4)
 ```
+
+# Fresh rat MV ECs: Stacked bar plot
+```{r}
+# Get metadata from object and convert to data frame and order by frequency
+# Get data from object and convert to dataframe
+data <- as.data.frame(table(ratMV_ec@meta.data[['cell_type']], ratMV_ec@meta.data[['condition']])) %>%
+  arrange(desc(Freq))
+
+# Change colnames
+colnames(data) <- c("Cluster", "Dataset", "Freq")
+
+data$Dataset <- factor(data$Dataset, levels = c("Fresh fMV", "fMV+PP"))
+
+
+bPlot <- ggplot(data[], 
+                aes(fill=Cluster, 
+                    y=Freq, 
+                    x=Dataset)) + 
+  ylab("% Fraction of Total") +
+  geom_bar(position="fill", 
+           stat="identity", 
+           color = "black", 
+           show.legend = T) + 
+  scale_fill_manual(values = color_pallete2) +
+  scale_y_continuous(labels = label_percent()) +  # Converts proportions to percentages
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   size=6, 
+                                   face="plain", 
+                                   family = 'Arial', 
+                                   color = "black"),
+        axis.text.y = element_text(size=6, 
+                                   face="plain", 
+                                   family = 'Arial', 
+                                   color = "black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=6, 
+                                   face="plain", 
+                                   family = 'Arial', 
+                                   color = "black"))
+
+ggsave(bPlot,
+       filename = "figures/barplot_object_rat_freshMV.svg", 
+       width = 2.5, 
+       height = 3)
+```
+
+# Fresh rat MV full: Stacked bar plot
+```{r}
+# Get metadata from object and convert to data frame and order by frequency
+# Get data from object and convert to dataframe
+data <- as.data.frame(table(ratMV_full@meta.data[['cluster.major.int']], ratMV_full@meta.data[['condition']])) %>%
+  arrange(desc(Freq))
+
+# Change colnames
+colnames(data) <- c("Cluster", "Dataset", "Freq")
+
+data$Dataset <- factor(data$Dataset, levels = c("Fresh fMV", "fMV+PP"))
+
+
+bPlot <- ggplot(data[], 
+                aes(fill=Cluster, 
+                    y=Freq, 
+                    x=Dataset)) + 
+  ylab("% Fraction of Total") +
+  geom_bar(position="fill", 
+           stat="identity", 
+           color = "black", 
+           show.legend = T) + 
+  scale_fill_manual(values = color_pallete2) +
+  scale_y_continuous(labels = label_percent()) +  # Converts proportions to percentages
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, 
+                                   size=12, 
+                                   face="bold", 
+                                   family = 'Arial', 
+                                   color = "black"),
+        axis.text.y = element_text(size=12, 
+                                   face="bold", 
+                                   family = 'Arial', 
+                                   color = "black"),
+        axis.title.x = element_blank(),
+        axis.title.y = element_text(size=12, 
+                                   face="bold", 
+                                   family = 'Arial', 
+                                   color = "black"))
+
+ggsave(bPlot,
+       filename = "figures/barplot_object_rat_freshMV.png", 
+       width = 4, 
+       height = 4)
+```
+
 
 # fMV: Module Score of Signature Genes
 ```{r}
@@ -1359,6 +1575,162 @@ ggsave(scoreVlnPlot,
 
 ```
 
+# Fresh rat MV EC: Module Score of Signature Genes
+```{r}
+object <- ratMV_ec
+
+# Load dataframe with signatures
+ec_df <- read.csv('rutils/ec_vascular_subtype_signatures_dataframe.csv')[,-1]
+ 
+organ_ind <- grep("organ", ec_df$label)
+
+ec_df <- ec_df[organ_ind,]
+  
+# Get all the labels
+labels <- unique(ec_df$label)
+
+score_names <- c()
+
+for (i in 1:length(labels)) {
+
+  genes <- ec_df %>%
+    filter(label == labels[i]) %>%
+    pull(genes)
+
+  # Use addScore function to obtain scores using Seurat's method
+  object <- addScore(object, genes, score_name = labels[i], score_type = 'seurat')
+
+  # Get the score names
+  score_names[i] <- paste0(labels[i], "_score")
+
+}
+
+# Get current colnames of meta.data
+current_names <- colnames(object@meta.data)
+
+# Identify the score columns
+score_cols <- grep("^organ_.*_score$", current_names, value = TRUE)
+
+# Create new names
+new_names <- str_replace(score_cols, "^organ_(.*)_score$", "\\1")  # extract organ name
+new_names <- str_to_title(new_names)  # capitalize organ name
+new_names <- paste(new_names, "EC Signature")  # append suffix
+
+# Apply the renaming
+colnames(object@meta.data)[match(score_cols, current_names)] <- new_names
+
+
+# Extract and clean metadata
+df <- object@meta.data %>%
+  select(score = `Pancreas EC Signature`, 
+         subtype = cell_type, 
+         condition)
+
+# Order vascular_subtype by mean score (lowest to highest)
+mean_order <- df %>%
+  group_by(subtype) %>%
+  summarise(mean_score = mean(score, na.rm = TRUE)) %>%
+  arrange(mean_score) %>%  # lowest to highest
+  pull(subtype)
+
+# Set factor levels in the desired order
+df$subtype <- factor(df$subtype, levels = mean_order)
+
+summary_df <- df %>%
+  group_by(subtype) %>%
+  summarize(
+    mean = mean(score),
+    Q1 = quantile(score, 0.25),
+    Q3 = quantile(score, 0.75),
+    .groups = 'drop'
+  )
+
+
+# Plot
+scoreVlnPlot <- ggplot(df, aes(x = subtype, y = score, fill = subtype)) +
+  geom_violin(
+  position = position_dodge(width = 0.8),  # not too wide, avoids next group
+  trim = FALSE,
+  scale = "width",
+  width = 0.6  # narrower violins to fit within group
+) +
+  scale_fill_manual(values = color_pallete2) +
+  scale_color_manual(values = color_pallete2) +
+  coord_flip() +
+  labs(x = "EC Subtype", y = "Pancreas EC Signature Score", fill = "Dataset") +
+  theme_minimal(base_family = "Arial", base_size = 6) +
+  theme(
+    plot.title = element_blank(),
+    axis.text = element_text(size = 6, face = "plain", family = "Arial"),
+    axis.title = element_text(size = 6, face = "plain", family = "Arial"),
+    legend.text = element_text(size = 6, face = "plain", family = "Arial"),
+    legend.title = element_text(size = 6, face = "plain", family = "Arial"),
+    legend.position = 'none',
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black", size = 0.5),
+    axis.ticks = element_line(color = "black", size = 0.5)
+  )+ stat_summary(fun.y=median, geom="point", shape=18,
+                 size=2, color="red")
+
+object@active.ident <- factor(Idents(object),
+                                levels = c("Arteriole", "Capillary", "Venule", "Artery"))
+
+object@meta.data$cell_type <- factor(
+  object@meta.data$cell_type,
+  levels = c("Artery", "Arteriole", "Capillary", "Venule")  # your desired order
+)
+
+
+# Plot
+scoreVlnPlot <- ggplot(df, aes(x = subtype, y = score, fill = subtype)) +
+  geom_violin(
+  position = position_dodge(width = 0.8),  # not too wide, avoids next group
+  trim = FALSE,
+  scale = "width",
+  width = 0.6  # narrower violins to fit within group
+) +
+  
+  scale_fill_manual(values = color_pallete2) +
+  scale_color_manual(values = color_pallete2) +
+  coord_flip() +
+  labs(x = "EC Subtype", y = "Pancreas EC Signature Score", fill = "Dataset") +
+  theme_minimal(base_family = "Arial", base_size = 6) +
+  theme(
+    plot.title = element_blank(),
+    axis.text = element_text(size = 6, face = "plain", family = "Arial"),
+    axis.title = element_text(size = 6, face = "plain", family = "Arial"),
+    legend.text = element_text(size = 6, face = "plain", family = "Arial"),
+    legend.title = element_text(size = 6, face = "plain", family = "Arial"),
+    legend.position = 'none',
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    axis.line = element_line(color = "black", size = 0.5),
+    axis.ticks = element_line(color = "black", size = 0.5)
+  )+ stat_summary(fun.y=median, geom="point", shape=18,
+                 size=2, color="red")
+
+object@active.ident <- factor(Idents(object),
+                                levels = c("Arteriole", "Capillary", "Venule", "Artery"))
+
+object@meta.data$cell_type <- factor(
+  object@meta.data$cell_type,
+  levels = c("Artery", "Arteriole", "Capillary", "Venule")  # your desired order
+)
+
+
+dPlot <- betterDotPlot(object, features = c("Pancreas EC Signature"), metadata = 'cell_type', cluster_group = F, cluster_feature = F, )[[1]]
+
+combinedPlot <- plot_grid(scoreVlnPlot, dPlot, ncol = 2, nrow = 1, rel_widths = c(1, 1)) 
+
+ggsave(combinedPlot,
+       filename = "figures/ratMV_EC_vlnplot_dotplot_pancreas_score.svg", 
+       width = 4.5, 
+       height = 2)
+
+```
+
+
 # bMV: Pancreas EC signatures comparison
 ```{r}
 object <- bMV
@@ -1698,13 +2070,395 @@ ggsave(fPlot5,
        height = 5)
 
 
-fPlot6 <- customFeaturePlot(neg_fMV, feature = c('GCG','SST', 'INS','CPA1','CFTR'), reduction = "X_force", add_border = T)  # With black outline
+fPlot6 <- customFeaturePlot(neg_fMV, feature = c('INS','GCG', 'SST'), reduction = "X_force", add_border = T, nrow = 1, ncol = 3)  # With black outline
 
 ggsave(fPlot6,
        filename = "figures/feature_plot_selected_signature_genes_neg_fMV.png", 
-       width = 7, 
-       height = 5)
+       width = 9, 
+       height = 3)
+
+
+fPlot7 <- customFeaturePlot(fMV, feature = c('Madcam1','Cd86'), reduction = "X_force", add_border = T, nrow = 1, ncol = 3)  # With black outline
+
+ggsave(fPlot6,
+       filename = "figures/feature_plot_selected_signature_genes_neg_fMV.png", 
+       width = 9, 
+       height = 3)
 ```
+
+# Differential Expression Analysis
+```{r}
+
+signature_genes_all <- convertGenes(readRDS('rutils/signature_genes.rds'), convert_to = 'mouse')
+
+
+markers_capillary_fmv <- FindMarkers(fMV, 
+                                ident.1 = c("Capillary 1")) %>%
+  mutate(feature = rownames(.),
+         pct.diff = pct.1 - pct.2,
+         norm.pct.diff = pct.1/pct.1 - pct.2/pct.1,
+         neglogpval = -log(p_val_adj),
+         neglogpval = ifelse(is.infinite(neglogpval), 
+                             max(-log(.$p_val_adj)[!is.infinite(-log(.$p_val_adj))]), 
+                             neglogpval),
+         log2FC.neglogpval = avg_log2FC*neglogpval)
+
+markers_capillary_fmv_filt_pos <- markers_capillary_fmv %>%
+  filter(p_val_adj < 0.05 & 
+           pct.1 > 0.2 & 
+           avg_log2FC > 1)
+
+markers_capillary_fmv_sig_only <- markers_capillary_fmv %>%
+  filter(feature %in% signature_genes_all)
+
+
+  # Rename for export
+  markers_capillary_fmv <- markers_capillary_fmv %>%
+    rename(
+      `P value` = p_val,
+      `Average log2FoldChange` = avg_log2FC,
+      `% Expression in capillary 1` = pct.1,
+      `% Expression in all other EC subpopulations` = pct.2,
+      `Bonferroni-adjusted P value` = p_val_adj,
+      `% Expression Difference` = pct.diff,
+      `Normalized % Expression Difference` = norm.pct.diff,
+      `-Log(adjusted p value)` = neglogpval,
+      `Average log2FoldChange X -Log(adjusted p value)` = log2FC.neglogpval
+    )
+  
+    # Rename for export
+  markers_capillary_fmv_filt_pos <- markers_capillary_fmv_filt_pos %>%
+    rename(
+      `P value` = p_val,
+      `Average log2FoldChange` = avg_log2FC,
+      `% Expression in capillary 1` = pct.1,
+      `% Expression in all other EC subpopulations` = pct.2,
+      `Bonferroni-adjusted P value` = p_val_adj,
+      `% Expression Difference` = pct.diff,
+      `Normalized % Expression Difference` = norm.pct.diff,
+      `-Log(adjusted p value)` = neglogpval,
+      `Average log2FoldChange X -Log(adjusted p value)` = log2FC.neglogpval
+    )
+  
+    markers_capillary_fmv_sig_only <- markers_capillary_fmv_sig_only %>%
+    rename(
+      `P value` = p_val,
+      `Average log2FoldChange` = avg_log2FC,
+      `% Expression in capillary 1` = pct.1,
+      `% Expression in all other EC subpopulations` = pct.2,
+      `Bonferroni-adjusted P value` = p_val_adj,
+      `% Expression Difference` = pct.diff,
+      `Normalized % Expression Difference` = norm.pct.diff,
+      `-Log(adjusted p value)` = neglogpval,
+      `Average log2FoldChange X -Log(adjusted p value)` = log2FC.neglogpval
+    )
+
+  # Write to Excel
+writexl::write_xlsx(
+  list(
+    "All Markers" = markers_capillary_fmv,
+    "Filtered Positive Markers" = markers_capillary_fmv_filt_pos,
+    "Signature Genes Only" = markers_capillary_fmv_sig_only
+  ),
+  path = "output/Supplementary Table 2.xlsx"
+)
+
+signature_genes_all <- convertGenes(readRDS('rutils/signature_genes.rds'), convert_to = 'mouse')
+
+
+markers_capillary_bmv <- FindMarkers(bMV, 
+                                ident.1 = c("Capillary 1")) %>%
+  mutate(feature = rownames(.),
+         pct.diff = pct.1 - pct.2,
+         norm.pct.diff = pct.1/pct.1 - pct.2/pct.1,
+         neglogpval = -log(p_val_adj),
+         neglogpval = ifelse(is.infinite(neglogpval), 
+                             max(-log(.$p_val_adj)[!is.infinite(-log(.$p_val_adj))]), 
+                             neglogpval),
+         log2FC.neglogpval = avg_log2FC*neglogpval)
+
+markers_capillary_bmv_filt_pos <- markers_capillary_bmv %>%
+  filter(p_val_adj < 0.05 & 
+           pct.1 > 0.2 & 
+           avg_log2FC > 1)
+
+markers_capillary_bmv_sig_only <- markers_capillary_bmv %>%
+  filter(feature %in% signature_genes_all)
+
+
+  # Rename for export
+  markers_capillary_bmv <- markers_capillary_bmv %>%
+    rename(
+      `P value` = p_val,
+      `Average log2FoldChange` = avg_log2FC,
+      `% Expression in capillary 1` = pct.1,
+      `% Expression in all other EC subpopulations` = pct.2,
+      `Bonferroni-adjusted P value` = p_val_adj,
+      `% Expression Difference` = pct.diff,
+      `Normalized % Expression Difference` = norm.pct.diff,
+      `-Log(adjusted p value)` = neglogpval,
+      `Average log2FoldChange X -Log(adjusted p value)` = log2FC.neglogpval
+    )
+  
+    # Rename for export
+  markers_capillary_bmv_filt_pos <- markers_capillary_bmv_filt_pos %>%
+    rename(
+      `P value` = p_val,
+      `Average log2FoldChange` = avg_log2FC,
+      `% Expression in capillary 1` = pct.1,
+      `% Expression in all other EC subpopulations` = pct.2,
+      `Bonferroni-adjusted P value` = p_val_adj,
+      `% Expression Difference` = pct.diff,
+      `Normalized % Expression Difference` = norm.pct.diff,
+      `-Log(adjusted p value)` = neglogpval,
+      `Average log2FoldChange X -Log(adjusted p value)` = log2FC.neglogpval
+    )
+  
+    markers_capillary_bmv_sig_only <- markers_capillary_bmv_sig_only %>%
+    rename(
+      `P value` = p_val,
+      `Average log2FoldChange` = avg_log2FC,
+      `% Expression in capillary 1` = pct.1,
+      `% Expression in all other EC subpopulations` = pct.2,
+      `Bonferroni-adjusted P value` = p_val_adj,
+      `% Expression Difference` = pct.diff,
+      `Normalized % Expression Difference` = norm.pct.diff,
+      `-Log(adjusted p value)` = neglogpval,
+      `Average log2FoldChange X -Log(adjusted p value)` = log2FC.neglogpval
+    )
+
+  # Write to Excel
+writexl::write_xlsx(
+  list(
+    "All Markers" = markers_capillary_bmv,
+    "Filtered Positive Markers" = markers_capillary_bmv_filt_pos,
+    "Signature Genes Only" = markers_capillary_bmv_sig_only
+  ),
+  path = "output/Supplementary Table 3.xlsx"
+)
+
+bMV_cap1_genes <- markers_capillary_bmv_filt_pos %>%
+  pull(feature)
+
+bMV_cap1_pancreas_sig <- markers_capillary_bmv_filt_pos %>%
+  filter(feature %in% signature_genes_all) %>%
+  pull(feature)
+
+fMV_cap1_genes <- markers_capillary_fmv_filt_pos %>%
+  pull(feature)
+
+fMV_cap1_pancreas_sig <- markers_capillary_fmv_filt_pos %>%
+  filter(feature %in% signature_genes_all) %>%
+  pull(feature)
+
+
+unique_sig_bMV <- setdiff(bMV_cap1_pancreas_sig, fMV_cap1_pancreas_sig)
+unique_sig_fMV <- setdiff(fMV_cap1_pancreas_sig, bMV_cap1_pancreas_sig)
+intersect_sig <- intersect(fMV_cap1_pancreas_sig, bMV_cap1_pancreas_sig)
+
+
+# List all vectors
+vecs <- list(
+  "Pancreas EC signature genes" = signature_genes_all,
+  "Overlap of fMV Capillary 1 markers with Pancreas EC signature genes" = fMV_cap1_pancreas_sig,
+  "Overlap of bMV Capillary 1 markers with Pancreas EC signature genes" = bMV_cap1_pancreas_sig,
+  "Overlap of fMV and bMV Pancreas EC signature genes" = intersect_sig,
+  "Unique bMV Pancreas EC signature genes" = unique_sig_bMV,
+  "Unique fMV Pancreas EC signature genes" = unique_sig_fMV
+)
+
+# Find max length
+max_len <- max(sapply(vecs, length))
+
+# Pad with NA
+vecs_padded <- lapply(vecs, function(x) {
+  length(x) <- max_len
+  return(x)
+})
+
+# Create the data frame
+df <- as.data.frame(vecs_padded, stringsAsFactors = FALSE)
+
+# Save as CSV
+write.csv(df, "output/Supplementary Table 4.csv", row.names = FALSE, na = "")
+
+
+seq <- readxl::read_excel('rutils/tGFP_peaks_annotated_3kb_promoter.xlsx')
+
+seq <- seq %>%
+  filter(annotation == 'Promoter (<=1kb)')
+
+chipseq_genes <- seq %>%
+  pull(SYMBOL)
+
+chipseq_genes <- convertGenes(chipseq_genes, convert_to = 'mouse')
+
+sig_chipseq <- intersect(chipseq_genes, signature_genes_all)
+
+bMV_sig_chipseq <- intersect(sig_chipseq, bMV_cap1_pancreas_sig)
+
+fMV_sig_chipseq <- intersect(sig_chipseq, fMV_cap1_pancreas_sig)
+
+unique_bMV_chipseq <- setdiff(bMV_sig_chipseq, fMV_sig_chipseq)
+  
+unique_fMV_chipseq <- setdiff(fMV_sig_chipseq, bMV_sig_chipseq)
+  
+intersect_sig_chipseq <- intersect(fMV_sig_chipseq, bMV_sig_chipseq)
+
+# List all vectors
+vecs <- list(
+  "Pancreas EC signature genes w/ NKX2-3 binding sites" = sig_chipseq,
+  "Overlap of bMV Capillary 1 markers with Pancreas EC signature genes w/ NKX2-3 binding sites" = bMV_sig_chipseq,
+  "Overlap of fMV Capillary 1 markers with Pancreas EC signature genes w/ NKX2-3 binding sites" = fMV_sig_chipseq,
+  "Overlap of fMV and bMV Pancreas EC signature genes w/ NKX2-3 binding sites" = intersect_sig_chipseq,
+  "Unique bMV Pancreas EC signature genes w/ NKX2-3 binding sites" = unique_bMV_chipseq,
+  "Unique fMV Pancreas EC signature genes w/ NKX2-3 binding sites" = unique_fMV_chipseq
+)
+
+# Find max length
+max_len <- max(sapply(vecs, length))
+
+# Pad with NA
+vecs_padded <- lapply(vecs, function(x) {
+  length(x) <- max_len
+  return(x)
+})
+
+# Create the data frame
+df <- as.data.frame(vecs_padded, stringsAsFactors = FALSE)
+
+# Save as CSV
+write.csv(df, "output/Supplementary Table 7.csv", row.names = FALSE, na = "")
+
+
+# Color Pallete
+color_pallete <- c("Arteriole" = '#B09C85', 
+                   "Capillary 3" = '#EFC000',
+                   "Venule" = '#FDAF91',
+                   "Capillary 1" = '#0073C2',
+                   "Capillary 2" = "#EE0000",
+                   "fMV+ILC" = "#EE8733",
+                   "fMV-Only" = "#003C67",
+                   "bMV+ILC" = "#931C12",
+                   "bMV-Only" = "darkgreen",
+                   'bMV-Fresh' = "#AF46B4",
+                   "Alpha" = "#4682B4",
+                   "Beta" = '#B44656',
+                   "Delta" = '#46B462'
+                   )
+
+
+# Overlap of fMV
+venn_list1 <- list("fMV+ILC Capillary 1" = fMV_cap1_genes,
+                  "Pancreatic EC Signature Genes" = signature_genes_all)
+
+venn1 <- ggvenn(
+  venn_list1, 
+  fill_color = c("#EE8733", "#0073C2"),
+  stroke_size = 0.5, 
+  set_name_size = 4,
+  show_percentage = F, text_size = 4, 
+  )
+
+ggsave(venn1,
+       filename = "figures/overlap1.svg", 
+       width = 5, 
+       height = 6)
+
+
+# Overlap of bMV
+venn_list2 <- list("bMV+ILC Capillary 1" = bMV_cap1_genes,
+                  "Pancreatic EC Signature Genes" = signature_genes_all)
+
+venn2 <- ggvenn(
+  venn_list2, 
+  fill_color = c("#931C12", "#0073C2"),
+  stroke_size = 0.5, 
+  set_name_size = 4,
+  show_percentage = F, text_size = 4, 
+  )
+
+ggsave(venn2,
+       filename = "figures/overlap2.svg", 
+       width = 5, 
+       height = 6)
+
+# Overlap of bMV
+venn_list3 <- list("fMV+ILC Capillary 1" = fMV_cap1_genes,
+                   "bMV+ILC Capillary 1" = bMV_cap1_genes,
+                   "Pancreatic EC Signature Genes" = signature_genes_all)
+
+venn3 <- ggvenn(
+  venn_list3, 
+  fill_color = c("#EE8733", "#931C12", "#0073C2"),
+  stroke_size = 0.5, 
+  set_name_size = 4,
+  show_percentage = F, text_size = 4, 
+  )
+
+ggsave(venn3,
+       filename = "figures/overlap3.svg", 
+       width = 5, 
+       height = 6)
+
+# Overlap of bMV
+venn_list4 <- list("fMV+ILC Capillary 1" = fMV_cap1_genes,
+                   "Pancreatic EC Signature Genes" = signature_genes_all,
+                   "Genes w/ NKX2-3 binding sites" = chipseq_genes)
+
+venn4 <- ggvenn(
+  venn_list4, 
+  fill_color = c("#EE8733", "#0073C2", "#46B462"),
+  stroke_size = 0.5, 
+  set_name_size = 4,
+  show_percentage = F, text_size = 4, 
+  )
+
+ggsave(venn4,
+       filename = "figures/overlap4.svg", 
+       width = 5, 
+       height = 6)
+
+
+# Overlap of bMV
+venn_list5 <- list("bMV+ILC Capillary 1" = bMV_cap1_genes,
+                   "Pancreatic EC Signature Genes" = signature_genes_all,
+                   "Genes w/ NKX2-3 binding sites" = chipseq_genes)
+
+venn5 <- ggvenn(
+  venn_list5, 
+  fill_color = c("#931C12", "#0073C2", "#46B462"),
+  stroke_size = 0.5, 
+  set_name_size = 4,
+  show_percentage = F, text_size = 4, 
+  )
+
+ggsave(venn5,
+       filename = "figures/overlap5.svg", 
+       width = 5, 
+       height = 6)
+
+# Overlap of bMV
+venn_list6 <- list("fMV+ILC Capillary 1" = fMV_cap1_genes,
+                   "bMV+ILC Capillary 1" = bMV_cap1_genes,
+                   "Pancreatic EC Signature Genes w/ NKX2-3 binding site" = sig_chipseq)
+
+venn6 <- ggvenn(
+  venn_list6, 
+  fill_color = c("#EE8733", "#931C12", "#EFC000"),
+  stroke_size = 0.5, 
+  set_name_size = 4,
+  show_percentage = F, text_size = 4, 
+  )
+
+ggsave(venn6,
+       filename = "figures/overlap6.svg", 
+       width = 5, 
+       height = 6)
+
+
+```
+
 
 # Comparison of Capillary 1 markers individually for fMV and bMV or chipseq genes
 ```{r}
@@ -2099,12 +2853,21 @@ fMV <- SetIdent(fMV, value = 'dataset')
 fMV_ILC <- subset(fMV, value = 'fMV+ILC')
 
 # Load ILC data
-ilc <- readRDS('output/fm_ilc_neg_postqc_analyzed/seurat_obj.rds')
+ilc <- readRDS('output/fm_ilc_neg_postqc_analyzed_subset_analyzed/seurat_obj.rds')
+
+# Update annotations if necessary
+ilc@meta.data <- ilc@meta.data %>%
+  mutate(cell_type = case_when(
+    leiden_res0_25 == '2'  ~ "Beta",
+    leiden_res0_25 == '4'  ~ "Beta",
+    leiden_res0_25 == '3'  ~ "Delta",
+    leiden_res0_25 == '0'  ~ "Alpha",
+    leiden_res0_25 == '1'  ~ "Alpha",
+    leiden_res0_25 == '5'  ~ "Alpha",
+  ))
 
 # Subset only ILC clusters
 ilc <- SetIdent(ilc, value = 'cell_type')
-
-
 
 # Get metadata from ILC
 ilc_meta <- ilc@meta.data
@@ -2120,7 +2883,6 @@ fm_ilc_meta <- fMV_ILC@meta.data
 rownames(fm_ilc_meta) <- paste0("fm_", rownames(fm_ilc_meta))
 fm_ilc_meta$barcode <- rownames(fm_ilc_meta)
 fm_ilc_cells <- rownames(fm_ilc_meta) 
-
 
 # Merge metas
 merged_meta <- merge(fm_ilc_meta, ilc_meta, all = T)
@@ -2157,6 +2919,7 @@ ilc_magic_subset <- magic_ilc[ilc_gene_ind,]
 # Merge only subset data
 merge_data <- cbind(fm_ilc_magic_subset, ilc_magic_subset)
 
+# 
 rownames(merge_data) <- common_genes
 colnames(merge_data) <- merged_meta$barcode
 
@@ -2165,67 +2928,273 @@ object <- CreateSeuratObject(counts = merge_data, data = merge_data, assay = 'RN
 saveRDS(object, file = 'output/fMV_ilc_neg_merged.rds')
 ```
 
-# Pseudobulk PCA
+# CellChat Pipeline
 ```{r}
-library(ggplot2)
-library(dplyr)
-library(readr)
+data.input <- merge_data
 
-# Load data 
-pc_df <- read_csv("../output/pseudobulk_pca_coordinates.csv") %>%
-  rename(sample = 1)
-meta_df <- read_csv("../output/pseudobulk_metadata.csv") %>%
-  rename(sample = 1)
+object <- SetIdent(object, value = 'cell_type')
 
-# Combine metadata and PCA
-plot_df <- pc_df %>%
-  left_join(meta_df, by = "sample") %>%
-  mutate(dataset = case_when(
-    dataset == 'bm_ilc'  ~ "bMV+ILC",
-    dataset == 'bm_only'  ~ "bMV-Only",
-    dataset == 'fm_ilc_pos'  ~ "fMV+ILC",
-    dataset == 'fm_only_pos'  ~ "fMV-Only",
-    dataset == 'bm_fresh' ~ 'bMV-Fresh'
-  ))
+labels <- Idents(object)
 
+meta <- data.frame(labels = labels, row.names = names(labels))
 
+cellchat <- createCellChat(object = data.input, meta = meta, group.by = "labels")
 
-# Define custom shapes for vascular subtypes
-shape_map <- c(
-  "Arteriole" = 15,     # square
-  "Capillary 1" = 16,   # circle
-  "Capillary 2" = 17,   # triangle up
-  "Capillary 3" = 18,   # diamond
-  "Venule" = 4          # X
-)
+CellChatDB <- CellChatDB.human
+showDatabaseCategory(CellChatDB)
+dplyr::glimpse(CellChatDB$interaction)
 
-# Define custom colors for datasets
-color_map <- c(
-  "bMV-Fresh" = "#AF46B4",  # blue
-  "bMV-Only" = "darkgreen",  # orange
-  "bMV+ILC" = "#931C12",  # green
-  "fMV-Only" = "#003C67",  # red
-  "fMV+ILC" = "#EE8733"   # purple
-)
+CellChatDB.use <- CellChatDB
 
-# Plot
-plot <- ggplot(plot_df, aes(x = PC1, y = PC2, color = dataset, shape = vascular_subtype)) +
-  geom_point(size = 4, stroke = 1) +
-  scale_shape_manual(values = shape_map) +
-  scale_color_manual(values = color_map) +
-  theme_minimal(base_family = "Arial") +
-  theme(
-    plot.title = element_blank(),
-    axis.title = element_text(size = 12, face = "bold", family = "Arial"),
-    axis.text = element_text(size = 12, face = "bold", family = "Arial"),
-    legend.title = element_text(size = 12, face = "bold", family = "Arial"),
-    legend.text = element_text(size = 12, face = "bold", family = "Arial"),
-    panel.grid = element_blank(),
-    axis.line = element_line(color = "black", size = 0.8),
-    axis.ticks = element_line(color = "black", size = 0.6)
-  ) +
-  labs(x = "PC1", y = "PC2", color = "Dataset", shape = "Vascular Subtype")
+cellchat@DB <- CellChatDB.use
+cellchat <- subsetData(cellchat)
+
+future::plan("multisession", workers = 4)
+cellchat <- identifyOverExpressedGenes(cellchat)
+
+cellchat <- identifyOverExpressedInteractions(cellchat)
+
+cellchat <- computeCommunProb(cellchat, type = "triMean", trim = NULL, raw.use = TRUE)
+```
+
+# CellChat Pipeline Cont'd 
+```{r}
+cellchat <- filterCommunication(cellchat, min.cells = 10)
+
+cellchat <- computeCommunProbPathway(cellchat)
+
+cellchat <- aggregateNet(cellchat)
+
+saveRDS(cellchat, file = "output/cellchat_merged_ilc_fm.rds")
+```
+
+CellChat: Load data
+```{r}
+cellchat <- readRDS(file = 'output/cellchat_merged_ilc_fm.rds')
+
+# Color Pallete
+color_pallete <- c("Arteriole" = '#B09C85', 
+                   "Capillary 3" = '#EFC000',
+                   "Venule" = '#FDAF91',
+                   "Capillary 1" = '#0073C2',
+                   "Capillary 2" = "#EE0000",
+                   "Alpha" = "#4682B4",
+                   "Beta" = '#B44656',
+                   "Delta" = '#46B462'
+                   )
 
 
-ggsave(plot, filename = '../output/pseudobulk.svg', width = 4, height = 4)
+```
+
+# Circle Plot All Interactions
+```{r}
+groupSize <- as.numeric(table(cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+
+	png(filename = paste0("figures/all_interactions", ".png"), bg = "transparent", width = 00, height = 400)
+	
+netVisual_circle(cellchat@net$count, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Number of interactions")
+
+	dev.off()
+```
+
+
+# Circle Plot EC to ILC and ILC to EC
+```{r}
+groupSize <- as.numeric(table(cellchat@idents))
+par(mfrow = c(1,2), xpd=TRUE)
+
+
+	png(filename = paste0("figures/ec_to_ilc", ".png"), bg = "transparent", width = 400, height = 400)
+	par(mfrow = c(1, 1), xpd = TRUE)
+	
+netVisual_circle(cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength", color.use = color_pallete, sources.use = 1:5, targets.use = 6:8)
+
+	dev.off()
+	
+	png(filename = paste0("figures/ilc_to_ec", ".png"), bg = "transparent", width = 400, height = 400)
+	par(mfrow = c(1, 1), xpd = TRUE)
+	
+netVisual_circle(cellchat@net$weight, vertex.weight = groupSize, weight.scale = T, label.edge= F, title.name = "Interaction weights/strength", color.use = color_pallete, targets.use = 1:5, sources.use = 6:8)
+
+	dev.off()
+```
+
+# Circle Plots of pathway of interest
+```{r}
+pdf("figures/ILC_to_EC_pathways.pdf", width = 14, height = 6, bg = "transparent")
+par(mfrow = c(1, 6), mar = c(1, 1, 2, 1), oma = c(0, 0, 2, 0), xpd = TRUE)
+
+# 2. First batch: to ECs (5 plots)
+for (pathway in c("INSULIN", "CALCR", "SEMA3", "Testosterone", "PERIOSTIN")) {
+  netVisual_aggregate(cellchat, signaling = pathway, layout = "circle", 
+                      sources.use = 6:8, targets.use = 1:5, 
+                      color.use = color_pallete)
+  title(main = pathway, cex.main = 1.1)
+}
+
+dev.off()
+
+
+
+pdf("figures/ECs_to_ILC_pathways.pdf", width = 14, height = 6, bg = "transparent")
+par(mfrow = c(1, 6), mar = c(1, 1, 2, 1), oma = c(0, 0, 2, 0), xpd = TRUE)
+
+# 3. Second batch: from ECs (6 plots)
+for (pathway in c("TGFb", "SEMA7", "FGF", "HSPG", "ACTIVIN", "IGFBP")) {
+  netVisual_aggregate(cellchat, signaling = pathway, layout = "circle",
+                      color.use = color_pallete, 
+                      sources.use = 1:5, targets.use = 6:10)
+  title(main = pathway, cex.main = 1.1)
+}
+
+dev.off()
+
+
+
+```
+
+```{r}
+pdf("figures/all_pathways_to_and_from_ECs.pdf", width = 14, height = 6, bg = "transparent")
+par(mfrow = c(2, 6), mar = c(1, 1, 2, 1), oma = c(0, 0, 2, 0), xpd = TRUE)
+
+# 1. Circle plot
+netVisual_circle(cellchat@net$count, vertex.weight = groupSize, 
+                 weight.scale = TRUE, label.edge = FALSE, 
+                 title.name = "Number of Interactions")
+
+# 2. First batch: to ECs (5 plots)
+for (pathway in c("INSULIN", "CALCR", "SEMA3", "Testosterone", "PERIOSTIN")) {
+  netVisual_aggregate(cellchat, signaling = pathway, layout = "circle", 
+                      sources.use = 6:8, targets.use = 1:5, 
+                      color.use = color_pallete)
+  title(main = pathway, cex.main = 1.1)
+}
+
+# 3. Second batch: from ECs (6 plots)
+for (pathway in c("TGFb", "SEMA7", "FGF", "HSPG", "ACTIVIN", "IGFBP")) {
+  netVisual_aggregate(cellchat, signaling = pathway, layout = "circle",
+                      color.use = color_pallete, 
+                      sources.use = 1:5, targets.use = 6:10)
+  title(main = pathway, cex.main = 1.1)
+}
+
+dev.off()
+
+```
+
+
+# HeatMap
+```{r}
+# Access all the signaling pathways showing significant communications
+pathways.show.all <- cellchat@netP$pathways
+
+netVisual_heatmap(cellchat, signaling = pathways.show.all[10], color.heatmap = "Reds", color.use = color_pallete, targets.use = 1:5, sources.use = 6:10, remove.isolate = T, )
+```
+
+# Individual VEGF interactions
+```{r}
+pairLR <- extractEnrichedLR(cellchat, signaling = 'VEGF', geneLR.return = FALSE)
+pairLR_plot <- pairLR[1:2,]
+
+# Circle plot
+
+for (i in 1:length(pairLR_plot)) {
+	png(filename = paste0("figures/",pairLR_plot[i], ".png"), bg = "transparent", width = 400, height = 400)
+		par(mfrow = c(1, 1), xpd = TRUE)
+		
+netVisual_individual(cellchat, signaling = 'VEGF', pairLR.use = pairLR_plot[i], layout = "circle", sources.use = 6:8, targets.use = 1:5, color.use = color_pallete)
+
+	dev.off()
+}
+
+```
+
+```{r}
+LR.show <- as.data.frame(pairLR[1:2,]) # show one ligand-receptor pair
+
+colnames(LR.show) <- 'interaction_name'
+
+netVisual_bubble(cellchat, sources.use = 7, targets.use = c(1:5), remove.isolate = FALSE, pairLR.use = LR.show)
+```
+
+
+```{r}
+cellchat <- netAnalysis_computeCentrality(cellchat, slot.name = "netP") # the slot 'netP' means the inferred intercellular communication network of signaling pathways
+# Signaling role analysis on the aggregated cell-cell communication network from all signaling pathways
+ht1 <- netAnalysis_signalingRole_heatmap(cellchat, pattern = "outgoing", signaling = pathways.show.all[1:20])
+ht2 <- netAnalysis_signalingRole_heatmap(cellchat, pattern = "incoming", signaling = pathways.show.all[1:20])
+ht1 + ht2
+```
+
+```{r}
+netAnalysis_signalingRole_network(cellchat, signaling = 'VEGF', width = 8, height = 2.5, font.size = 10)
+```
+
+# RidgePlot individual interactions
+```{r}
+
+features1 <- c("VEGFA", "VEGFB", "VEGFC", "VEGFD")
+
+features2 <- c("Flt1", "Kdr", "Flt4")
+
+for (i in 1:length(features1)) {
+  
+  rPlot <- RidgePlot(neg_fMV, features = features1[i], group.by = 'cell_type', cols = color_pallete, assay = 'MAGIC_imputed_data')
+  
+  ggsave(rPlot, filename = paste0("RidgePlot_ILC_", features1[i], ".svg"), width = 4, height = 3)
+  
+}
+
+for (i in 1:length(features2)) {
+  
+  rPlot <- RidgePlot(fMV_ILC, features = features2[i], group.by = 'cell_type', cols = color_pallete, assay = 'MAGIC_imputed_data')
+  
+  ggsave(rPlot, filename = paste0("RidgePlot_fMV_", features2[i], ".svg"), width = 5, height = 3)
+  
+}
+
+
+
+features1 <- c("INS", "IAPP", "SEMA3A", "SRD5A1", "SEMA6D")
+
+features2 <- c("Insr", "Calcrl", "Nrp1", "Ar", "Kdr")
+
+for (i in 1:length(features1)) {
+  
+  rPlot <- RidgePlot(neg_fMV, features = features1[i], group.by = 'cell_type', cols = color_pallete, assay = 'MAGIC_imputed_data')
+  
+  ggsave(rPlot, filename = paste0("RidgePlot_ILC_", features1[i], ".svg"), width = 4, height = 3)
+  
+}
+
+for (i in 1:length(features2)) {
+  
+  rPlot <- RidgePlot(fMV_ILC, features = features2[i], group.by = 'cell_type', cols = color_pallete, assay = 'MAGIC_imputed_data')
+  
+  ggsave(rPlot, filename = paste0("RidgePlot_fMV_", features2[i], ".svg"), width = 5, height = 3)
+  
+}
+
+
+
+features1 <- c("TGFBR1", "ACVR1C","PLXNC1", "FGFR1")
+features2 <- c("Tgfb1", "Inhbb", "Sema7a", "Fgf1")
+
+
+for (i in 1:length(features1)) {
+  
+  rPlot <- RidgePlot(neg_fMV, features = features1[i], group.by = 'cell_type', cols = color_pallete, assay = 'MAGIC_imputed_data')
+  
+  ggsave(rPlot, filename = paste0("RidgePlot_ILC_", features1[i], ".svg"), width = 4, height = 3)
+  
+}
+
+for (i in 1:length(features2)) {
+  
+  rPlot <- RidgePlot(fMV_ILC, features = features2[i], group.by = 'cell_type', cols = color_pallete, assay = 'MAGIC_imputed_data')
+  
+  ggsave(rPlot, filename = paste0("RidgePlot_fMV_", features2[i], ".svg"), width = 5, height = 3)
+  
+}
 ```

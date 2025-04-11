@@ -1,0 +1,77 @@
+*.rds
+*.Rds
+*.csv
+*.xlsx
+*.png
+*.svg
+*.mtx
+*.h5ad
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*.so
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# R specific
+.Rhistory
+.RData
+.Rproj.user/
+.Ruserdata
+*.Rproj
+
+# Data and model files
+*.h5
+*.hdf5
+*.csv
+*.tsv
+*.rds
+*.rda
+*.feather
+*.parquet
+*.pkl
+*.joblib
+*.sav
+*.zip
+*.tar.gz
+
+# Logs and reports
+*.log
+*.out
+*.aux
+*.toc
+*.synctex.gz
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Environment and dependencies
+.venv/
+env/
+*.env
+*.yml
+*.yaml
+*.lock
+renv/
+renv.lock
+
+# IDE files
+.vscode/
+.idea/
+
+# Output folders
+output/
+results/
+figures/
+plots/
+
+# Image and figure files
+*.png
+*.jpg
+*.jpeg
+*.tiff
+*.svg
+*.pdf
+

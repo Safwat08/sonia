@@ -85,7 +85,7 @@ betterDotPlot <- function(object, features, metadata, cluster_group = TRUE, clus
 
 
 
-  dPlot <- DotPlot(object, features = features, dot.scale = 5, scale = scaledots)
+  dPlot <- DotPlot(object, features = features, dot.scale = 5, scale = scaledots, scale.min = 0, scale.max = 100)
 
   if (scaledots) {
     dPlot <- dPlot + scale_color_gradient2(low = 'blue3', high = 'red3', mid = 'white', midpoint = 0,
@@ -114,10 +114,10 @@ betterDotPlot <- function(object, features, metadata, cluster_group = TRUE, clus
       plot.title = element_blank(),
       axis.title.y = element_blank(),
       axis.title.x = element_blank(),
-      axis.text.x = element_text(size = 8, face = "bold", colour = "black", vjust = 1, hjust = 1, angle = 90),
-      axis.text.y = element_text(size = 8, face = "bold", colour = "black"),
-      legend.text = element_text(size = 8, face = "bold", colour = "black"),
-      legend.title = element_text(size = 8, face = "bold", colour = "black"),
+      axis.text.x = element_text(size = 6, face = "plain", colour = "black", vjust = 1, hjust = 1, angle = 0),
+      axis.text.y = element_text(size = 6, face = "plain", colour = "black"),
+      legend.text = element_text(size = 6, face = "plain", colour = "black"),
+      legend.title = element_text(size = 6, face = "plain", colour = "black"),
       legend.key.width = unit(0.5, 'cm'),
       legend.key.height = unit(0.3, 'cm'),
       legend.position = 'right'
