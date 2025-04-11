@@ -1,0 +1,3 @@
+*.ipynb linguist-generated
+*.Rmd linguist-documentation
+*.html linguist-generated
