@@ -2,18 +2,17 @@
 
 set -e  # Stop on error
 
-# ======================================
-# Enable 'conda/mamba activate' in scripts
-# ======================================
-source ~/miniconda3/etc/profile.d/conda.sh
+# Enable 'conda activate' inside this script
+source /Users/vasconcelos_lab/miniforge3/etc/profile.d/conda.sh
+conda activate py_env  # Replace with your actual environment name
 
 # ======================================
 # Step 1. Preprocessing data
 # ======================================
 echo "Step 1: Preprocessing data..."
-mamba activate py_env
+conda activate py_env
 python "python/load_data.py"
-mamba deactivate
+conda deactivate
 
 # ======================================
 # Step 2. Find deviant genes (pre-analysis)
@@ -27,7 +26,7 @@ Rscript "R/run_outputDeviantGenes.R" "output/fm_ilc_neg_postqc/"
 # Step 3. Analyze data
 # ======================================
 echo "Step 3: Analyzing data..."
-mamba activate py_env
+conda activate py_env
 python "python/analyze_data.py" \
   "output/bm_merge" \
   "output/fm_merge" \
@@ -52,7 +51,7 @@ python "python/subset_data.py" "true" \
 python "python/subset_data.py" "true" \
   "output/fm_ilc_neg_postqc_analyzed" \
   "0" "1" "4" "5"
-mamba deactivate
+conda deactivate
 
 # ======================================
 # Step 5. Re-run find deviant genes (post-subset)
@@ -66,12 +65,16 @@ Rscript "R/run_outputDeviantGenes.R" "output/fm_ilc_neg_postqc_analyzed_subset/"
 # Step 6. Re-analyze data (post-subset)
 # ======================================
 echo "Step 6: Re-analyzing data (post-subset)..."
-mamba activate py_env
+conda activate py_env
 python "python/analyze_data.py" \
   "output/fm_merge_analyzed_subset" \
   "output/bm_merge_analyzed_subset" \
   "output/fm_ilc_neg_postqc_analyzed_subset"
-mamba deactivate
+conda deactivate
+
+
+##!!!! Note you have to go in manually to change PC_varm.obs to X_pca_varm.obs!!!
+
 
 # ======================================
 # Step 7. Create seurat objects to visualize in R
