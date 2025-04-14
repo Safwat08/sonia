@@ -47,16 +47,6 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Environment and dependencies
-.venv/
-env/
-*.env
-*.yml
-*.yaml
-*.lock
-renv/
-renv.lock
-
 # IDE files
 .vscode/
 .idea/
@@ -65,7 +55,6 @@ renv.lock
 output/
 results/
 figures/
-plots/
 rawdata/*
 
 # Image and figure files

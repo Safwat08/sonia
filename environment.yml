@@ -1,0 +1,22 @@
+name: py_env
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python
+  - scanpy
+  - python-igraph
+  - leidenalg
+  - ca-certificates
+  - openssl
+  - jupyterlab
+  - certifi
+  - palantir
+  - xgboost
+  - cython
+  - decoupler-py
+  - lightgbm
+  - bioconda::phate
+  - scvi-tools
+  - bioconda::harmonypy
+prefix: /Users/vasconcelos_lab/miniforge3/envs/py_env

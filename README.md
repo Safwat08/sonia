@@ -1,24 +1,49 @@
-SONIA (Single nuclei Organotypic eNdothelial Integrated Analysis) 
+# SONIA  
+**Single nuclei Organotypic eNdothelial Integrated Analysis**
 
-This repository contains the analysis code for the following publication - TBD
+SONIA is reproducible analysis pipeline for studying endothelial heterogeneity using snRNA-seq data.
+**→ Publication Link: _TBD_**
 
-Please create the following directories before analyzing:
+---
+
+## 📁 Directory Setup
+
+Before running the pipeline, please create the following folders:
+
 rawdata/
 output/
 figures/
 
-cellranger outputs must be placed under "rawdata" in their own directory
-	fMV-Only GFP + Fraction - fm_only_pos
-	fMV+ILC GFP + Fraction - fm_ilc_pos
-	bMV-Only GFP + Fraction - bm_only
-	bMV+ILC GFP + Fraction - bm_ilc
-	fMV+ILC GFP - Fraction (Aligned to dual human-mouse genome) - fm_ilc_neg_mixed
-	fMV+ILC GFP - Fraction (Aligned to only human genome) - fm_ilc_neg_human
+## 📦 Input Data (CellRanger outputs)
 
-Recreate objects run - run_all.sh 
-	run_all.sh is a bash script that calls python and Rscripts to produce analyzed objects from cellranger(v8.0.1) 
-	** Important between Step 6 and 7, please change name of PCs_varm.csv to X_pca_varm.csv
-	** Please note that fresh rat fat microvessel data was analyzed using a prior pipeline as detailed in the publication. Please make the object following the instructions and then place in the output folder prior to running analysis_workflow.rmd
+Place the **CellRanger (v8.0.1)** outputs into the `rawdata/` directory under the following folder names:
+
+| Sample Description                                             | Folder Name            |
+|----------------------------------------------------------------|------------------------|
+| fMV-Only GFP+ Fraction                                         | `fm_only_pos`          |
+| fMV+ILC GFP+ Fraction                                          | `fm_ilc_pos`           |
+| bMV-Only GFP+ Fraction                                         | `bm_only`              |
+| bMV+ILC GFP+ Fraction                                          | `bm_ilc`               |
+| fMV+ILC GFP– Fraction (dual human-mouse aligned)               | `fm_ilc_neg_mixed`     |
+| fMV+ILC GFP– Fraction (human-only aligned)                     | `fm_ilc_neg_human`     |
+
+---
+
+## 🚀 Reproduce Analysis Objects
+
+To generate the processed Seurat objects from CellRanger outputs, run:
+
+```bash
+bash run_all.sh
+```
+	run_all.sh is a bash script that sequentially calls Python and R scripts to process and analyze the data.
+
+Important Notes:
+
+** Between Step 6 and 7, please rename PCs_varm.csv to X_pca_varm.csv
+
+** The fresh rat fat microvessel data was analyzed using a prior pipeline. Please generate this object manually (as described in the publication) and place it in the output/ folder before running analysis_workflow.rmd.
+
 
 Recreate visualization and cellchat analysis - analysis_workflow.rmd
 	analysis_workflow.rmd uses analyzed seurat objects to recreate visualizations and run cellchat analysis
