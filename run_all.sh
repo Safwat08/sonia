@@ -1,26 +1,39 @@
 #!/bin/bash
 
-set -e  # Stop on error
-
+echo "Setting up python env, source conda.sh prior to running"
 # Enable 'conda activate' inside this script
-source /Users/vasconcelos_lab/miniforge3/etc/profile.d/conda.sh
-conda activate py_env  # Replace with your actual environment name
+# source /Users/vasconcelos_lab/miniforge3/etc/profile.d/conda.sh
+
+# Recreate py_env
+conda create -n py_env -f env.yml -y
+conda activate py_env
+conda deactivate
+
+# Recreate r_env
+conda activate r_env
+Rscript install.R
+conda deactivate
+
+set -e  # Stop on error
 
 # ======================================
 # Step 1. Preprocessing data
 # ======================================
-echo "Step 1: Preprocessing data..."
 conda activate py_env
+echo "Step 1: Preprocessing data..."
 python "python/load_data.py"
 conda deactivate
 
 # ======================================
 # Step 2. Find deviant genes (pre-analysis)
 # ======================================
+# Recreate r_env
+conda activate r_env
 echo "Step 2: Finding deviant genes (initial)..."
 Rscript "R/run_outputDeviantGenes.R" "output/bm_merge/"
 Rscript "R/run_outputDeviantGenes.R" "output/fm_merge/"
 Rscript "R/run_outputDeviantGenes.R" "output/fm_ilc_neg_postqc/"
+conda deactivate
 
 # ======================================
 # Step 3. Analyze data
@@ -56,10 +69,12 @@ conda deactivate
 # ======================================
 # Step 5. Re-run find deviant genes (post-subset)
 # ======================================
+conda activate r_env
 echo "Step 5: Finding deviant genes (post-subset)..."
 Rscript "R/run_outputDeviantGenes.R" "output/fm_merge_analyzed_subset/"
 Rscript "R/run_outputDeviantGenes.R" "output/bm_merge_analyzed_subset/"
 Rscript "R/run_outputDeviantGenes.R" "output/fm_ilc_neg_postqc_analyzed_subset/"
+conda deactivate
 
 # ======================================
 # Step 6. Re-analyze data (post-subset)
@@ -73,14 +88,15 @@ python "python/analyze_data.py" \
 conda deactivate
 
 
-##!!!! Note you have to go in manually to change PC_varm.obs to X_pca_varm.obs!!!
+##!!!! Note you have to go in manually to change PC_varm.csv to X_pca_varm.csv!!!
+find output/ -type f -name "PCs_varm.csv" -execdir mv {} X_pca_varm.csv \; 
 
 
 # ======================================
 # Step 7. Create seurat objects to visualize in R
 # ======================================
 echo "Step 7: Creating seurat object..."
-
+conda activate r_env
 Rscript R/run_createSeurat.R "output/fm_merge_analyzed_subset"
 Rscript R/run_createSeurat.R "output/bm_merge_analyzed_subset"
 Rscript R/run_createSeurat.R "output/fm_ilc_neg_postqc_analyzed_subset"
@@ -92,6 +108,7 @@ echo "Step 8: Running EC subtype scoring..."
 
 Rscript R/run_ec_subtypeScore.R "output/fm_merge_analyzed_subset"
 Rscript R/run_ec_subtypeScore.R "output/bm_merge_analyzed_subset"
+conda deactivate
 
 # ======================================
 # Done

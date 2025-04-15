@@ -23,16 +23,11 @@ library(scales)
 
 # Source necessary functions
 ```{r}
-source('R/changeClusterName.R')
 source('R/addScore.R')
 source('R/markerDotPlot.R')
 source('R/customFeaturePlot.R')
 source('R/customGeyserPlot.R')
-source('R/consensusMarkers.R')
-source('R/RunVarimaxPCA.R')
 source('R/convertGenes_updateGenes.R')
-source('R/enrichrAnnotate.R')
-source('R/VlnDotPlot.R')
 source('R/colorObject.R')
 source('R/ec_subtypeScore.R')
 ```

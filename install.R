@@ -6,17 +6,25 @@ options(repos = c(CRAN = "https://cloud.r-project.org"))
 # ------------------------------
 # Install CRAN packages with versions
 # ------------------------------
-install.packages("Seurat", version = "5.2.0")
-install.packages("dplyr", version = "1.1.4")
-install.packages("tidyverse", version = "2.0.0")
-install.packages("ggplot2", version = "3.5.1")
-install.packages("stringr", version = "1.5.1")
-install.packages("cowplot", version = "1.1.3")
-install.packages("patchwork", version = "1.3.0")
-install.packages("ggvenn", version = "0.1.10")
-install.packages("ggrepel", version = "0.9.6")
-install.packages("Matrix", version = "1.7.1")
-install.packages("scales", version = "1.3.0")
+packages <- list(
+  Seurat     = "5.2.0",
+  dplyr      = "1.1.4",
+  tidyverse  = "2.0.0",
+  ggplot2    = "3.5.1",
+  stringr    = "1.5.1",
+  cowplot    = "1.1.3",
+  patchwork  = "1.3.0",
+  ggvenn     = "0.1.10",
+  ggrepel    = "0.9.6",
+  Matrix     = "1.7.1",
+  scales     = "1.3.0"
+)
+
+for (pkg in names(packages)) {
+  if (!requireNamespace(pkg, quietly = TRUE)) {
+    install.packages(pkg, version = packages[[pkg]])
+  }
+}
 
 # ------------------------------
 # Install Bioconductor packages
