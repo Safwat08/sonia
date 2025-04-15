@@ -29,7 +29,7 @@ Place the **CellRanger (v8.0.1)** outputs into the `rawdata/` directory under th
 | fMV+ILC GFP– Fraction (dual human-mouse aligned)               | `fm_ilc_neg_mixed`     |
 | fMV+ILC GFP– Fraction (human-only aligned)                     | `fm_ilc_neg_human`     |
 
-**The fresh rat fat microvessel data was analyzed using a prior pipeline. Please generate this object (as described in the publication) and place it in the 'output/' folder before running analysis_workflow.rmd.**
+Note: The fresh rat fat microvessel data was analyzed using a prior pipeline. Please generate this object (as described in the publication) and place it in the 'output/' folder before running analysis_workflow.rmd.
 
 ---
 ## Reproduce Analysis Objects
@@ -40,8 +40,7 @@ Step 1. To generate the processed Seurat objects from CellRanger outputs using S
 ```bash
 bash run_all.sh
 ```
-Note
-* run_all.sh recreates environments for R and Python using conda with the install.R and environment.yml files respectively
+Note: run_all.sh recreates environments for R and Python using conda with the install.R and environment.yml files respectively
 
 Step 2. To recreate visualization and cellchat analysis use - analysis_workflow.rmd
 
