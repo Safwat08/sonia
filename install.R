@@ -43,5 +43,5 @@ if (!requireNamespace("devtools", quietly = TRUE)) {
   install.packages("devtools")
 }
 
-devtools::install_github("lazappi/SCpubr@v2.0.2")
-devtools::install_github("sqjin/CellChat@v2.1.2")
+devtools::install_github("enblacar/SCpubr", ref = "v2.0.0-dev-stable")
+devtools::install_github("jinworks/CellChat", ref = "v2.1.2")
