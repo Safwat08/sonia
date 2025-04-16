@@ -60,10 +60,6 @@ python "python/subset_data.py" "true" \
   "output/bm_merge_analyzed" \
   "6" "2" "7" "3" "11" "5" "1" "0"
 
-# Subset fm_ilc_neg_postqc
-python "python/subset_data.py" "true" \
-  "output/fm_ilc_neg_postqc_analyzed" \
-  "0" "1" "4" "5"
 conda deactivate
 
 # ======================================
@@ -73,7 +69,6 @@ conda activate r_env
 echo "Step 5: Finding deviant genes (post-subset)..."
 Rscript "R/run_outputDeviantGenes.R" "output/fm_merge_analyzed_subset/"
 Rscript "R/run_outputDeviantGenes.R" "output/bm_merge_analyzed_subset/"
-Rscript "R/run_outputDeviantGenes.R" "output/fm_ilc_neg_postqc_analyzed_subset/"
 conda deactivate
 
 # ======================================
@@ -84,7 +79,6 @@ conda activate py_env
 python "python/analyze_data.py" \
   "output/fm_merge_analyzed_subset" \
   "output/bm_merge_analyzed_subset" \
-  "output/fm_ilc_neg_postqc_analyzed_subset"
 conda deactivate
 
 
@@ -97,17 +91,17 @@ find output/ -type f -name "PCs_varm.csv" -execdir mv {} X_pca_varm.csv \;
 # ======================================
 echo "Step 7: Creating seurat object..."
 conda activate r_env
-Rscript R/run_createSeurat.R "output/fm_merge_analyzed_subset"
-Rscript R/run_createSeurat.R "output/bm_merge_analyzed_subset"
-Rscript R/run_createSeurat.R "output/fm_ilc_neg_postqc_analyzed_subset"
+Rscript R/run_createSeurat.R "output/fm_merge_analyzed_subset_analyzed"
+Rscript R/run_createSeurat.R "output/bm_merge_analyzed_subset_analyzed"
+Rscript R/run_createSeurat.R "output/fm_ilc_neg_postqc_analyzed"
 
 # ======================================
 # Step 8. Run module score for EC subtypes
 # ======================================
 echo "Step 8: Running EC subtype scoring..."
 
-Rscript R/run_ec_subtypeScore.R "output/fm_merge_analyzed_subset"
-Rscript R/run_ec_subtypeScore.R "output/bm_merge_analyzed_subset"
+Rscript R/run_ec_subtypeScore.R "output/fm_merge_analyzed_subset_analyzed"
+Rscript R/run_ec_subtypeScore.R "output/bm_merge_analyzed_subset_analyzed"
 conda deactivate
 
 # ======================================
