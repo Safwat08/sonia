@@ -114,7 +114,7 @@ betterDotPlot <- function(object, features, metadata, cluster_group = TRUE, clus
       plot.title = element_blank(),
       axis.title.y = element_blank(),
       axis.title.x = element_blank(),
-      axis.text.x = element_text(size = 6, face = "plain", colour = "black", vjust = 1, hjust = 1, angle = 0),
+      axis.text.x = element_text(size = 6, face = "plain", colour = "black", vjust = 1, hjust = 1, angle = 90),
       axis.text.y = element_text(size = 6, face = "plain", colour = "black"),
       legend.text = element_text(size = 6, face = "plain", colour = "black"),
       legend.title = element_text(size = 6, face = "plain", colour = "black"),
