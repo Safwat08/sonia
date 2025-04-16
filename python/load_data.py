@@ -31,8 +31,8 @@ adata_mixed = sc.read_10x_h5('rawdata/fm_ilc_neg_mixed/filtered_feature_bc_matri
 adata_human = sc.read_10x_h5('rawdata/fm_ilc_neg_human/filtered_feature_bc_matrix.h5')
 
 # Create boolean masks for human and mouse genes
-human_mask = adata_mixed.var['genome'] == 'GRCh38'
-mouse_mask = adata_mixed.var['genome'] == 'GRCm39'
+human_mask = (adata_mixed.var['genome'] == 'GRCh38').to_numpy()
+mouse_mask = (adata_mixed.var['genome'] == 'GRCm39').to_numpy()
 
 # Sum counts for human and mouse genes in each cell
 human_counts = np.sum(adata_mixed.X[:, human_mask], axis=1)  # Summing across features
