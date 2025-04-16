@@ -13,13 +13,11 @@ conda deactivate
 # ======================================
 # Step 2. Find deviant genes (pre-analysis)
 # ======================================
-# Recreate r_env
-conda activate r_env
+
 echo "Step 2: Finding deviant genes (initial)..."
 Rscript "R/run_outputDeviantGenes.R" "output/bm_merge/"
 Rscript "R/run_outputDeviantGenes.R" "output/fm_merge/"
 Rscript "R/run_outputDeviantGenes.R" "output/fm_ilc_neg_postqc/"
-conda deactivate
 
 # ======================================
 # Step 3. Analyze data
@@ -51,11 +49,9 @@ conda deactivate
 # ======================================
 # Step 5. Re-run find deviant genes (post-subset)
 # ======================================
-conda activate r_env
 echo "Step 5: Finding deviant genes (post-subset)..."
 Rscript "R/run_outputDeviantGenes.R" "output/fm_merge_analyzed_subset/"
 Rscript "R/run_outputDeviantGenes.R" "output/bm_merge_analyzed_subset/"
-conda deactivate
 
 # ======================================
 # Step 6. Re-analyze data (post-subset)
@@ -76,7 +72,6 @@ find output/ -type f -name "PCs_varm.csv" -execdir mv {} X_pca_varm.csv \;
 # Step 7. Create seurat objects to visualize in R
 # ======================================
 echo "Step 7: Creating seurat object..."
-conda activate r_env
 Rscript R/run_createSeurat.R "output/fm_merge_analyzed_subset_analyzed"
 Rscript R/run_createSeurat.R "output/bm_merge_analyzed_subset_analyzed"
 Rscript R/run_createSeurat.R "output/fm_ilc_neg_postqc_analyzed"
@@ -88,7 +83,6 @@ echo "Step 8: Running EC subtype scoring..."
 
 Rscript R/run_ec_subtypeScore.R "output/fm_merge_analyzed_subset_analyzed"
 Rscript R/run_ec_subtypeScore.R "output/bm_merge_analyzed_subset_analyzed"
-conda deactivate
 
 # ======================================
 # Done
